@@ -7,11 +7,15 @@ import { LoggingInterceptor } from './interceptor/logging.interceptor';
 import { ResponseTransformInterceptor } from './interceptor/response.interceptor';
 import { ErrorInterceptor } from './interceptor/error.interceptor';
 import { AuthModule } from './auth/auth.module';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+    }),
+    JwtModule.register({
+      global: true,
     }),
     UserModule,
     PrismaModule,

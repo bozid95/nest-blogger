@@ -6,6 +6,7 @@ import {
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from 'src/prisma-client/prisma.service';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
@@ -18,7 +19,18 @@ export class UserService {
       if (email) {
         throw new ConflictException('Email already exists');
       }
-      const user = await this.prisma.user.create({ data: createUserDto });
+      //hash password
+      const salt = 10;
+      const hashedPassword = bcrypt.hashSync(createUserDto.password, salt);
+
+      const user = await this.prisma.user.create({
+        data: {
+          name: createUserDto.name,
+          email: createUserDto.email,
+          password: hashedPassword,
+          role: 'USER',
+        },
+      });
       return user;
     } catch (error) {
       throw error;
