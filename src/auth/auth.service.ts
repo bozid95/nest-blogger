@@ -1,4 +1,8 @@
-import { Injectable, UnprocessableEntityException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+} from '@nestjs/common';
 import { SignInDto } from './dto/signin.dto';
 import { SignUpDto } from './dto/signup.dto';
 import { PrismaService } from 'src/prisma-client/prisma.service';
@@ -22,12 +26,12 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnprocessableEntityException('Invalid credentials');
+      throw new BadRequestException('Invalid credentials');
     }
 
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
-      throw new UnprocessableEntityException('Invalid credentials');
+      throw new BadRequestException('Invalid credentials');
     }
 
     const token = this.jwtService.sign(
@@ -41,10 +45,7 @@ export class AuthService {
       },
     );
 
-    return {
-      status: 'success',
-      data: { token },
-    };
+    return token;
   }
 
   async signUp(signUpDto: SignUpDto) {
@@ -55,7 +56,7 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new UnprocessableEntityException('Email already exists');
+      throw new ConflictException('Email already exists');
     }
 
     const salt = 10;
@@ -70,12 +71,17 @@ export class AuthService {
     });
 
     return {
-      status: 'success',
       data: {
         id: user.id,
         name: user.name,
         email: user.email,
       },
+    };
+  }
+
+  async signOut() {
+    return {
+      status: 'success',
     };
   }
 }

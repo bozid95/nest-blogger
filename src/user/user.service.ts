@@ -10,95 +10,88 @@ import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService) {}
-  async create(createUserDto: CreateUserDto) {
-    try {
-      const email = await this.prisma.user.findUnique({
-        where: { email: createUserDto.email },
-      });
-      if (email) {
-        throw new ConflictException('Email already exists');
-      }
-      //hash password
-      const salt = 10;
-      const hashedPassword = bcrypt.hashSync(createUserDto.password, salt);
+  private readonly saltRounds = 10;
 
-      const user = await this.prisma.user.create({
-        data: {
-          name: createUserDto.name,
-          email: createUserDto.email,
-          password: hashedPassword,
-          role: 'USER',
-        },
-      });
-      return user;
-    } catch (error) {
-      throw error;
+  constructor(private readonly prisma: PrismaService) {}
+
+  async create(createUserDto: CreateUserDto) {
+    const { name, email, password } = createUserDto;
+
+    // Check if email already exists
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email },
+    });
+    if (existingUser) {
+      throw new ConflictException('Email already exists');
     }
+
+    // Hash password
+    const hashedPassword = await this.hashPassword(password);
+
+    // Create user
+    const user = await this.prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        role: 'USER',
+      },
+    });
+    return user;
   }
 
   async findAll() {
-    try {
-      return await this.prisma.user.findMany({
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-        },
-      });
-    } catch (error) {
-      throw error;
-    }
+    return this.prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+      },
+    });
   }
 
   async findOne(id: string) {
-    try {
-      const user = await this.prisma.user.findUnique({ where: { id } });
-      if (!user) {
-        throw new NotFoundException('User not found');
-      }
-      return user;
-    } catch (error) {
-      throw error;
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('User not found');
     }
+    return user;
   }
 
   async update(id: string, updateUserDto: UpdateUserDto) {
-    try {
-      const existingUser = await this.prisma.user.findUnique({ where: { id } });
-      if (!existingUser) {
-        throw new NotFoundException('User not found');
-      }
-      const email = await this.prisma.user.findUnique({
+    const existingUser = await this.prisma.user.findUnique({ where: { id } });
+    if (!existingUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (updateUserDto.email) {
+      const emailExists = await this.prisma.user.findUnique({
         where: { email: updateUserDto.email },
       });
-      if (email) {
+      if (emailExists && emailExists.id !== id) {
         throw new ConflictException('Email already exists');
       }
-      const user = await this.prisma.user.update({
-        where: { id },
-        data: updateUserDto,
-      });
-      return user;
-    } catch (error) {
-      throw error;
     }
+
+    const user = await this.prisma.user.update({
+      where: { id },
+      data: updateUserDto,
+    });
+    return user;
   }
 
   async remove(id: string) {
-    try {
-      const existingUser = await this.prisma.user.findUnique({ where: { id } });
-      if (!existingUser) {
-        throw new NotFoundException('User not found');
-      }
-      const user = await this.prisma.user.findUnique({ where: { id } });
-      if (!user) {
-        throw new NotFoundException('User not found');
-      }
-      return await this.prisma.user.delete({ where: { id } });
-    } catch (error) {
-      throw error;
+    const existingUser = await this.prisma.user.findUnique({ where: { id } });
+    if (!existingUser) {
+      throw new NotFoundException('User not found');
     }
+
+    return this.prisma.user.delete({ where: { id } });
+  }
+
+  // Utility to hash passwords
+  private async hashPassword(password: string): Promise<string> {
+    return bcrypt.hash(password, this.saltRounds);
   }
 }

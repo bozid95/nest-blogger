@@ -1,10 +1,9 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
-import { ErrorInterceptor } from './interceptor/error.interceptor';
-import { LoggingInterceptor } from './interceptor/logging.interceptor';
-import { ResponseTransformInterceptor } from './interceptor/response.interceptor';
+import { swaggerConfig } from './config/swagger.config';
+import { AllInOneInterceptor } from './interceptor/all.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -19,23 +18,13 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe());
 
   //interceptors
-  app.useGlobalInterceptors(
-    new LoggingInterceptor(),
-    new ResponseTransformInterceptor(),
-    new ErrorInterceptor(),
-  );
+  app.useGlobalInterceptors(new AllInOneInterceptor());
 
-  // setup swagger
-  const config = new DocumentBuilder()
-    .setTitle('API BLOGGER')
-    .setDescription('API Documentation')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('doc-blogger', app, document, {
-    customSiteTitle: 'API BLOGGER',
-  });
+  // Swagger
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+
+  // Setup Swagger pada path '/api'
+  SwaggerModule.setup('docs', app, document);
 
   await app.listen(process.env.PORT ?? 3000);
 }

@@ -3,11 +3,12 @@ import { UserModule } from './user/user.module';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma-client/prisma.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
-import { LoggingInterceptor } from './interceptor/logging.interceptor';
-import { ResponseTransformInterceptor } from './interceptor/response.interceptor';
-import { ErrorInterceptor } from './interceptor/error.interceptor';
 import { AuthModule } from './auth/auth.module';
 import { JwtModule } from '@nestjs/jwt';
+import { PostModule } from './post/post.module';
+import { AllInOneInterceptor } from './interceptor/all.interceptor';
+import { CategoryModule } from './category/category.module';
+import { CommentModule } from './comment/comment.module';
 
 @Module({
   imports: [
@@ -20,20 +21,15 @@ import { JwtModule } from '@nestjs/jwt';
     UserModule,
     PrismaModule,
     AuthModule,
+    PostModule,
+    CategoryModule,
+    CommentModule,
   ],
   controllers: [],
   providers: [
     {
       provide: APP_INTERCEPTOR,
-      useClass: ResponseTransformInterceptor,
-    },
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: LoggingInterceptor,
-    },
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: ErrorInterceptor,
+      useClass: AllInOneInterceptor,
     },
   ],
 })
