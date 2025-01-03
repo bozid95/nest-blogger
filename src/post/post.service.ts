@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
+import { PaginationDto } from './dto/pagination.dto';
 import { PrismaService } from 'src/prisma-client/prisma.service';
 
 @Injectable()
@@ -36,18 +37,40 @@ export class PostService {
       throw error;
     }
   }
+  async findAll(paginationDto: PaginationDto) {
+    const { page, limit } = paginationDto;
 
-  async findAll() {
-    try {
-      const posts = await this.prisma.post.findMany({
-        include: {
-          author: true,
-        },
-      });
-      return posts;
-    } catch (error) {
-      throw error;
-    }
+    // Menghitung skip (jumlah data yang dilewati berdasarkan page)
+    const skip = (page - 1) * limit;
+
+    // Pastikan limit dan skip sudah terdefinisi
+    const posts = await this.prisma.post.findMany({
+      take: limit, // Membatasi jumlah data yang diambil
+      orderBy: {
+        createdAt: 'desc', // Urutkan berdasarkan createdAt
+      },
+      include: {
+        author: true, // Menyertakan data author
+        categories: true, // Menyertakan data categories
+      },
+      skip,
+    });
+
+    // Hitung total jumlah data untuk pagination
+    const total = await this.prisma.post.count();
+
+    // Kembalikan data dan meta informasi untuk pagination
+    return {
+      data: posts,
+      meta: {
+        total,
+        page,
+        limit,
+        lastPage: Math.ceil(total / limit),
+        nextPage: page < Math.ceil(total / limit) ? page + 1 : null,
+        prevPage: page > 1 ? page - 1 : null,
+      },
+    };
   }
 
   async findOne(id: string) {

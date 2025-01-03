@@ -6,11 +6,13 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { PostService } from './post.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { PaginationDto } from './dto/pagination.dto';
 
 @Controller('post')
 @ApiTags('Posts')
@@ -20,16 +22,26 @@ export class PostController {
 
   @Post()
   create(@Body() createPostDto: CreatePostDto) {
-    try {
-      return this.postService.create(createPostDto);
-    } catch (error) {
-      throw error;
-    }
+    return this.postService.create(createPostDto);
   }
 
   @Get()
-  findAll() {
-    return this.postService.findAll();
+  @ApiQuery({
+    name: 'page', // Nama parameter query
+    required: false, // Menandakan parameter ini opsional
+    description: 'Page number for pagination', // Deskripsi untuk dokumentasi
+    type: Number, // Tipe data parameter
+    example: 1, // Nilai contoh
+  })
+  @ApiQuery({
+    name: 'limit', // Nama parameter query
+    required: false, // Menandakan parameter ini opsional
+    description: 'Number of items per page', // Deskripsi untuk dokumentasi
+    type: Number, // Tipe data parameter
+    example: 10, // Nilai contoh
+  })
+  findAll(@Query() paginationDto: PaginationDto) {
+    return this.postService.findAll(paginationDto);
   }
 
   @Get(':id')
