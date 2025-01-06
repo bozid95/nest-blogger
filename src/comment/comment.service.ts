@@ -1,39 +1,80 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { PrismaService } from 'src/prisma-client/prisma.service';
+import { Comment } from '@prisma/client';
 
 @Injectable()
 export class CommentService {
   constructor(private readonly prisma: PrismaService) {}
-  async create(createCommentDto: CreateCommentDto) {
-    const { content, postId, authorId } = createCommentDto;
-    const post = await this.prisma.post.findUnique({ where: { id: postId } });
-    if (!post) {
-      throw new NotFoundException('Post not found');
+
+  async create(createCommentDto: CreateCommentDto): Promise<Comment> {
+    if (!createCommentDto) {
+      throw new BadRequestException('Comment data is required');
     }
 
-    const author = await this.prisma.user.findUnique({
-      where: { id: authorId },
-    });
-    if (!author) {
-      throw new NotFoundException('Author not found');
+    const { content, postId, authorId } = createCommentDto;
+
+    if (!content || !postId || !authorId) {
+      throw new BadRequestException('Missing required fields');
     }
-    return await this.prisma.comment.create({
-      data: {
-        content,
-        post: {
-          connect: {
-            id: postId,
+
+    try {
+      const [post, author] = await Promise.all([
+        this.prisma.post.findUnique({
+          where: { id: postId },
+          select: { id: true },
+        }),
+        this.prisma.user.findUnique({
+          where: { id: authorId },
+          select: { id: true },
+        }),
+      ]);
+
+      if (!post) {
+        throw new NotFoundException(`Post with ID ${postId} not found`);
+      }
+
+      if (!author) {
+        throw new NotFoundException(`Author with ID ${authorId} not found`);
+      }
+
+      return await this.prisma.comment.create({
+        data: {
+          content,
+          post: { connect: { id: postId } },
+          author: { connect: { id: authorId } },
+        },
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          post: {
+            select: {
+              id: true,
+              title: true,
+            },
           },
         },
-        author: {
-          connect: {
-            id: authorId,
-          },
-        },
-      },
-    });
+      });
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+      throw new BadRequestException(
+        `Failed to create comment: ${error.message}`,
+      );
+    }
   }
 
   async findAll() {

@@ -53,8 +53,18 @@ export class PostService {
           createdAt: 'desc',
         },
         include: {
-          author: true,
-          categories: true,
+          author: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          categories: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
       });
 
