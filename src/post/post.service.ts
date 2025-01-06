@@ -7,6 +7,7 @@ import { PrismaService } from 'src/prisma-client/prisma.service';
 @Injectable()
 export class PostService {
   constructor(private readonly prisma: PrismaService) {}
+
   async create(createPostDto: CreatePostDto) {
     try {
       const post = await this.prisma.post.create({
@@ -37,40 +38,43 @@ export class PostService {
       throw error;
     }
   }
+
   async findAll(paginationDto: PaginationDto) {
-    const { page, limit } = paginationDto;
+    try {
+      const page = paginationDto.page ?? 1;
+      const limit = paginationDto.limit ?? 10;
 
-    // Menghitung skip (jumlah data yang dilewati berdasarkan page)
-    const skip = (page - 1) * limit;
+      const skip = (page - 1) * limit;
 
-    // Pastikan limit dan skip sudah terdefinisi
-    const posts = await this.prisma.post.findMany({
-      take: limit, // Membatasi jumlah data yang diambil
-      orderBy: {
-        createdAt: 'desc', // Urutkan berdasarkan createdAt
-      },
-      include: {
-        author: true, // Menyertakan data author
-        categories: true, // Menyertakan data categories
-      },
-      skip,
-    });
+      const posts = await this.prisma.post.findMany({
+        take: limit,
+        skip: skip,
+        orderBy: {
+          createdAt: 'desc',
+        },
+        include: {
+          author: true,
+          categories: true,
+        },
+      });
 
-    // Hitung total jumlah data untuk pagination
-    const total = await this.prisma.post.count();
+      const total = await this.prisma.post.count();
 
-    // Kembalikan data dan meta informasi untuk pagination
-    return {
-      data: posts,
-      meta: {
-        total,
-        page,
-        limit,
-        lastPage: Math.ceil(total / limit),
-        nextPage: page < Math.ceil(total / limit) ? page + 1 : null,
-        prevPage: page > 1 ? page - 1 : null,
-      },
-    };
+      // Return data and meta information for pagination
+      return {
+        data: posts,
+        meta: {
+          total,
+          page,
+          limit,
+          lastPage: Math.ceil(total / limit),
+          nextPage: page < Math.ceil(total / limit) ? page + 1 : null,
+          prevPage: page > 1 ? page - 1 : null,
+        },
+      };
+    } catch (error) {
+      throw new Error(`Failed to fetch posts: ${error.message}`);
+    }
   }
 
   async findOne(id: string) {
@@ -93,12 +97,9 @@ export class PostService {
           },
         },
       });
-      if (!post) {
-        throw new NotFoundException('Post not found');
-      }
       return post;
     } catch (error) {
-      throw error;
+      throw new Error(`Failed to fetch post with id ${id}: ${error.message}`);
     }
   }
 
@@ -112,22 +113,11 @@ export class PostService {
           title: updatePostDto.title,
           content: updatePostDto.content,
           published: updatePostDto.published,
-          categories: {
-            connectOrCreate: updatePostDto.categories.map((category) => ({
-              where: {
-                name: category.name,
-              },
-              create: {
-                name: category.name,
-              },
-            })),
-          },
-          updatedAt: new Date(),
         },
       });
       return post;
     } catch (error) {
-      throw error;
+      throw new Error(`Failed to update post with id ${id}: ${error.message}`);
     }
   }
 
